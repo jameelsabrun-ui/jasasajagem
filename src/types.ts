@@ -11,6 +11,7 @@ export interface Product {
   };
   tier: 'lead_magnet' | 'tripwire' | 'core' | 'premium';
   icon: string;
+  image?: string;
 }
 
 export const PRODUCTS: Product[] = [
@@ -21,7 +22,8 @@ export const PRODUCTS: Product[] = [
     niche: 'computer',
     price: { idr: 250000, usd: 19 },
     tier: 'tripwire',
-    icon: 'Terminal'
+    icon: 'Terminal',
+    image: 'https://picsum.photos/seed/computer/800/600'
   },
   {
     id: 'wealth-tech-dashboard',
@@ -30,7 +32,8 @@ export const PRODUCTS: Product[] = [
     niche: 'gold',
     price: { idr: 150000, usd: 12 },
     tier: 'tripwire',
-    icon: 'LineChart'
+    icon: 'LineChart',
+    image: 'https://picsum.photos/seed/gold/800/600'
   },
   {
     id: 'bpom-automation',
@@ -39,7 +42,8 @@ export const PRODUCTS: Product[] = [
     niche: 'parfum',
     price: { idr: 550000, usd: 39 },
     tier: 'core',
-    icon: 'PackageCheck'
+    icon: 'PackageCheck',
+    image: 'https://picsum.photos/seed/parfum/800/600'
   },
   {
     id: 'fractal-motif-generator',
@@ -48,6 +52,7 @@ export const PRODUCTS: Product[] = [
     niche: 'heritage',
     price: { idr: 1500000, usd: 99 },
     tier: 'core',
-    icon: 'Palette'
+    icon: 'Palette',
+    image: 'https://picsum.photos/seed/heritage/800/600'
   }
 ];

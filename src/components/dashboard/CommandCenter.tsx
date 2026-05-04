@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
@@ -12,10 +13,72 @@ import {
   Package,
   History,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  Loader2,
+  Sparkles,
+  Image as ImageIcon,
+  Search,
+  LineChart,
+  PackageCheck,
+  Palette
 } from "lucide-react";
+import { Input } from "@/src/components/ui/input";
+import { generateNicheImage } from "@/src/services/geminiService";
+import { toast } from "sonner";
+
+interface Purchase {
+  id: string;
+  name: string;
+  niche: string;
+  date: string;
+  status: string;
+  price: string;
+}
 
 export function CommandCenter() {
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [generatingNiche, setGeneratingNiche] = useState<string | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const fetchPurchases = async () => {
+      try {
+        const response = await fetch('/api/purchases');
+        const data = await response.json();
+        setPurchases(data.purchases);
+      } catch (error) {
+        console.error("Failed to fetch purchases", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPurchases();
+  }, []);
+
+  const handleGenerateImage = async (niche: string, desc: string) => {
+    setGeneratingNiche(niche);
+    try {
+      const url = await generateNicheImage(niche, desc);
+      if (url) {
+        setGeneratedImages(prev => ({ ...prev, [niche]: url }));
+        toast.success(`Generated new ${niche} branding asset!`);
+      }
+    } catch (error) {
+      toast.error("AI Generation failed. Check API configuration.");
+    } finally {
+      setGeneratingNiche(null);
+    }
+  };
+
+  const filteredPurchases = purchases.filter(p => 
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.niche.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.status.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="min-h-screen bg-background p-6 lg:p-10 scale-os-grid">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -63,66 +126,109 @@ export function CommandCenter() {
           {/* Purchased Assets */}
           <Card className="lg:col-span-2 glass border-white/5">
             <CardHeader className="border-b border-white/5 pb-4">
-              <CardTitle className="text-lg flex items-center justify-between">
-                <span>Your Purchases</span>
-                <Button variant="link" className="text-xs text-primary">View All History</Button>
-              </CardTitle>
-              <CardDescription>Access and manage your digital agency assets.</CardDescription>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-lg">Your Purchases</CardTitle>
+                  <CardDescription>Access and manage your digital agency assets.</CardDescription>
+                </div>
+                <div className="relative w-full md:w-64">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                   <Input 
+                      placeholder="Filter assets..." 
+                      className="pl-9 glass border-white/10 rounded-xl h-10 text-xs"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                   />
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-white/5">
-                {[
-                  { name: 'Vibe-Coding Expert Prompt Library', niche: '#Computer', date: 'Oct 24, 2026', status: 'Active' },
-                  { name: 'BPOM Notifkos Ready Pack', niche: '#Parfum', date: 'Oct 21, 2026', status: 'Active' },
-                  { name: 'WealthTech Lite Dashboard', niche: '#Gold', date: 'Oct 15, 2026', status: 'Expired' },
-                ].map((item, i) => (
-                  <div key={i} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
-                        <Terminal className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-bold">{item.name}</div>
-                        <div className="text-[10px] text-muted-foreground flex items-center gap-2">
-                          <span className="text-primary">{item.niche}</span>
-                          <span>•</span>
-                          <span>Purchased on {item.date}</span>
+                {loading ? (
+                  <div className="p-20 flex flex-col items-center justify-center text-muted-foreground">
+                    <Loader2 className="w-6 h-6 animate-spin mb-2" />
+                    <span className="text-xs font-mono">Syncing with Scale OS...</span>
+                  </div>
+                ) : filteredPurchases.length > 0 ? (
+                  filteredPurchases.map((item) => (
+                    <div key={item.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center">
+                          <Terminal className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold">{item.name}</div>
+                          <div className="text-[10px] text-muted-foreground flex items-center gap-2">
+                            <span className="text-primary font-bold">{item.niche}</span>
+                            <span>•</span>
+                            <span>{new Date(item.date).toLocaleDateString()}</span>
+                            <span>•</span>
+                            <span className="text-white/40">{item.price}</span>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-4">
+                         <Badge variant="outline" className={item.status === 'Active' ? 'text-emerald-500 border-emerald-500/20 bg-emerald-500/5' : 'text-red-500 border-red-500/20 bg-red-500/5'}>
+                           {item.status}
+                         </Badge>
+                         <Button size="sm" variant="outline" className="glass border-white/10 hover:bg-primary/20 hover:text-primary transition-all text-[10px] h-7">Manage</Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                       <Badge variant="outline" className={item.status === 'Active' ? 'text-emerald-500 border-emerald-500/20 bg-emerald-500/5' : 'text-red-500 border-red-500/20 bg-red-500/5'}>
-                         {item.status}
-                       </Badge>
-                       <Button size="sm" variant="outline" className="glass border-white/10 hover:bg-primary/20 hover:text-primary transition-all">Download</Button>
-                    </div>
+                  ))
+                ) : (
+                  <div className="p-10 text-center text-muted-foreground text-sm italic">
+                    No active assets found in your command center.
                   </div>
-                ))}
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Quick Actions / Content Factory Placeholder */}
+          {/* Quick Actions / AI Visual Sync */}
           <div className="space-y-6">
-            <Card className="glass border-white/5 overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <Cpu className="w-20 h-20" />
-              </div>
+            <Card className="glass border-white/5 overflow-hidden">
               <CardHeader>
-                <CardTitle className="text-lg">Content Factory</CardTitle>
-                <CardDescription>Autonomous content generation pipeline.</CardDescription>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  AI Visual Sync
+                </CardTitle>
+                <CardDescription>Generate dynamic branding assets per niche.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button className="w-full bg-primary hover:bg-primary/90 text-white rounded-lg">
-                  <Zap className="w-4 h-4 mr-2" /> Generate Now
-                </Button>
-                <div className="p-3 rounded-lg bg-white/5 border border-white/10">
-                  <div className="text-[10px] font-mono text-muted-foreground uppercase mb-2">Active Worker</div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold font-mono">OpenClaw v1.4</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">IDLE</span>
+                {[
+                  { niche: '#Computer', desc: 'Futuristic datacenter neon blue', icon: Terminal },
+                  { niche: '#Gold', desc: 'Golden circuits financial luxury', icon: LineChart },
+                  { niche: '#Parfum', desc: 'Floating bottle iridescent mist', icon: PackageCheck },
+                  { niche: '#HeritageAI', desc: 'Glowing digital batik fractal', icon: Palette }
+                ].map(item => (
+                  <div key={item.niche} className="flex flex-col gap-2 p-3 rounded-xl bg-white/5 border border-white/5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold">{item.niche}</span>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-6 text-[10px] bg-primary/10 text-primary hover:bg-primary/20"
+                        onClick={() => handleGenerateImage(item.niche, item.desc)}
+                        disabled={generatingNiche === item.niche}
+                      >
+                        {generatingNiche === item.niche ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Regenerate'}
+                      </Button>
+                    </div>
+                    {generatedImages[item.niche] ? (
+                      <img 
+                        src={generatedImages[item.niche]} 
+                        className="w-full h-24 object-cover rounded-lg border border-white/10"
+                        alt={item.niche}
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-full h-24 bg-black/40 rounded-lg flex flex-col items-center justify-center border border-dashed border-white/10 gap-2">
+                        <item.icon className="w-6 h-6 text-white/10" />
+                        <span className="text-[10px] text-white/5 uppercase font-mono tracking-tighter">Awaiting Sync</span>
+                      </div>
+                    )}
                   </div>
-                </div>
+                ))}
               </CardContent>
             </Card>
 

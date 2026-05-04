@@ -4,22 +4,41 @@ import { Hero } from "@/src/components/landing/Hero";
 import { NicheGateway } from "@/src/components/landing/NicheCards";
 import { ValueLadder } from "@/src/components/landing/ValueLadder";
 import { CommandCenter } from "@/src/components/dashboard/CommandCenter";
+import { NichePage } from "@/src/components/niche/NichePage";
+import { ThemeProvider } from "@/src/components/ThemeProvider";
+import { ThemeToggle } from "@/src/components/ThemeToggle";
 import { Button } from "@/src/components/ui/button";
 import { Cpu, LayoutDashboard, Globe, Shield, Menu, X } from "lucide-react";
 import { Toaster } from "@/src/components/ui/sonner";
+import { toast } from "sonner";
+import { Niche } from "@/src/types";
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'landing' | 'dashboard'>('landing');
+  const [currentPage, setCurrentPage] = useState<'landing' | 'dashboard' | 'niche'>('landing');
+  const [selectedNiche, setSelectedNiche] = useState<Niche | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const navigateToNiche = (nicheId: Niche) => {
+    setSelectedNiche(nicheId);
+    setCurrentPage('niche');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToLanding = () => {
+    setSelectedNiche(null);
+    setCurrentPage('landing');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
-    <div className="min-h-screen bg-background font-sans text-foreground">
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+      <div className="min-h-screen bg-background font-sans text-foreground">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4">
         <div className="max-w-7xl mx-auto glass rounded-2xl border-white/5 py-3 px-6 flex items-center justify-between shadow-lg shadow-black/50">
           <div 
             className="flex items-center gap-2 cursor-pointer group"
-            onClick={() => setCurrentPage('landing')}
+            onClick={navigateToLanding}
           >
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-black group-hover:rotate-12 transition-transform">
               J
@@ -36,10 +55,14 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <Button 
               variant={currentPage === 'dashboard' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setCurrentPage(currentPage === 'dashboard' ? 'landing' : 'dashboard')}
+              onClick={() => {
+                setSelectedNiche(null);
+                setCurrentPage(currentPage === 'dashboard' ? 'landing' : 'dashboard');
+              }}
               className="rounded-xl border-white/10 glass hidden sm:flex gap-2"
             >
               {currentPage === 'dashboard' ? (
@@ -67,7 +90,7 @@ export default function App() {
               transition={{ duration: 0.5 }}
             >
               <Hero />
-              <NicheGateway />
+              <NicheGateway onSelect={navigateToNiche} />
               <ValueLadder />
               
               {/* Footer */}
@@ -110,7 +133,7 @@ export default function App() {
                 </div>
               </footer>
             </motion.div>
-          ) : (
+          ) : currentPage === 'dashboard' ? (
             <motion.div
               key="dashboard"
               initial={{ opacity: 0, scale: 0.98 }}
@@ -120,11 +143,24 @@ export default function App() {
             >
               <CommandCenter />
             </motion.div>
+          ) : (
+            selectedNiche && (
+              <motion.div
+                key={`niche-${selectedNiche}`}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.5 }}
+              >
+                <NichePage nicheId={selectedNiche} onBack={navigateToLanding} />
+              </motion.div>
+            )
           )}
         </AnimatePresence>
       </main>
 
       <Toaster position="bottom-right" richColors />
-    </div>
+      </div>
+    </ThemeProvider>
   );
 }

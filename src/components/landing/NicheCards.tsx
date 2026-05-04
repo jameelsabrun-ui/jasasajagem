@@ -1,8 +1,11 @@
 import { motion } from "framer-motion";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/src/components/ui/card";
 import { Badge } from "@/src/components/ui/badge";
-import { Cpu, Coins, Droplets, Landmark, ArrowUpRight } from "lucide-react";
+import { Cpu, Coins, Droplets, Landmark, ArrowUpRight, Loader2 } from "lucide-react";
 import { Niche } from "@/src/types";
+import { useState, useEffect } from "react";
+import { generateNicheImage } from "@/src/services/geminiService";
+import { toast } from "sonner";
 
 const NICHES = [
   {
@@ -39,7 +42,48 @@ const NICHES = [
   }
 ];
 
-export function NicheGateway() {
+interface NicheGatewayProps {
+  onSelect: (nicheId: Niche) => void;
+}
+
+export function NicheGateway({ onSelect }: NicheGatewayProps) {
+  const [nicheImages, setNicheImages] = useState<Record<string, string>>({});
+  const [loadingNiches, setLoadingNiches] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    // Attempt to load from storage first
+    const saved = localStorage.getItem('jasasaja_niche_images');
+    if (saved) {
+      setNicheImages(JSON.parse(saved));
+    }
+
+    // Generate for niches that don't have images yet
+    NICHES.forEach(async (niche) => {
+      if (!nicheImages[niche.id]) {
+        try {
+          setLoadingNiches(prev => ({ ...prev, [niche.id]: true }));
+          const url = await generateNicheImage(niche.title, niche.description);
+          if (url) {
+            setNicheImages(prev => {
+              const updated = { ...prev, [niche.id]: url };
+              localStorage.setItem('jasasaja_niche_images', JSON.stringify(updated));
+              return updated;
+            });
+          }
+        } catch (error) {
+          console.warn(`Could not generate image for ${niche.id}`, error);
+          // Set a stable fallback
+          setNicheImages(prev => ({ 
+            ...prev, 
+            [niche.id]: `https://picsum.photos/seed/${niche.id}/800/600` 
+          }));
+        } finally {
+          setLoadingNiches(prev => ({ ...prev, [niche.id]: false }));
+        }
+      }
+    });
+  }, []);
+
   return (
     <section className="py-24 px-4 bg-black/20">
       <div className="max-w-7xl mx-auto">
@@ -58,21 +102,57 @@ export function NicheGateway() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
+              whileHover={{ y: -5 }}
+              onClick={() => {
+                console.log(`Navigating to niche landing page: ${niche.id}`);
+                toast.info(`Redirecting to ${niche.title} deep-dive...`, {
+                  description: "Initializing niche-specific AI agents.",
+                  duration: 2000,
+                });
+                onSelect(niche.id);
+              }}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  onSelect(niche.id);
+                }
+              }}
+              className="outline-none"
             >
-              <Card className="glass h-full border-white/5 hover:border-primary/50 transition-all duration-300 group cursor-pointer relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Card className="glass h-full border-white/5 hover:border-primary/50 transition-all duration-300 group cursor-pointer relative overflow-hidden active:scale-95">
+                {/* Background Image */}
+                {nicheImages[niche.id] && (
+                  <div className="absolute inset-0 z-0">
+                    <img 
+                      src={nicheImages[niche.id]} 
+                      alt="" 
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover opacity-20 group-hover:opacity-40 group-hover:scale-110 transition-all duration-500 blur-[2px] group-hover:blur-0" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+                  </div>
+                )}
+                
+                <div className="absolute top-0 right-0 p-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                   <ArrowUpRight className="w-5 h-5 text-primary" />
                 </div>
-                <CardHeader>
-                  <div className={`w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4 ${niche.color}`}>
-                    <niche.icon className="w-6 h-6" />
+                
+                <CardHeader className="relative z-10">
+                  <div className={`w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-4 ${niche.color} border border-white/10`}>
+                    {loadingNiches[niche.id] ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    ) : (
+                      <niche.icon className="w-6 h-6" />
+                    )}
                   </div>
                   <CardTitle className="text-2xl font-bold">{niche.title}</CardTitle>
                   <CardDescription className="text-muted-foreground leading-relaxed mt-2 text-sm">
                     {niche.description}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                
+                <CardContent className="relative z-10">
                   <div className="flex flex-wrap gap-2 mt-4">
                     {niche.tags.map(tag => (
                       <Badge key={tag} variant="secondary" className="bg-white/5 text-[10px] uppercase tracking-wider font-mono hover:bg-white/10">
